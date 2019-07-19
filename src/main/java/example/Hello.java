@@ -98,7 +98,7 @@ public class Hello implements RequestStreamHandler
             System.out.println("Currency: " + curr);
 
 
-             response = add_expense(email_id, first_name, last_name, category, amt, curr);
+             response = add_expense(email_id, first_name, last_name, category, amt, curr, true);
            }
            else if(action.equals("delete")){
              System.out.println("Action Delete");
@@ -109,7 +109,7 @@ public class Hello implements RequestStreamHandler
              System.out.println("amount: " + amt);
 
              amt = amt * -1;
-             response = add_expense(email_id, first_name, last_name, category, amt, curr);
+             response = add_expense(email_id, first_name, last_name, category, amt, curr, false);
            }
            else if(action.equals("spend")){
                System.out.println("Spend action");
@@ -143,6 +143,9 @@ public class Hello implements RequestStreamHandler
                  System.out.println(ffendDate);
                  response = get_expensePeriod(email_id, category, ffstartDate, ffendDate);
                }
+               else if(par.get("date").equals("") && par.get("date-period").equals("")){
+                 response = get_expense(email_id, category);
+               }
            }
 
 
@@ -170,6 +173,70 @@ public class Hello implements RequestStreamHandler
 
 
    }
+   public String get_expense(String email_id, String category){
+         System.out.println("Inside get_expense");
+         System.out.println(email_id + " " + category);
+         String res = null;
+         Connection conn = null;
+         ResultSet resultSet = null;
+         PreparedStatement st = null;
+         String jdbcUrl = "jdbc:postgresql://" + hostname + ":" + port + "/" + dbName + "?user=" + user + "&password=" + password;
+
+         try {
+     // Create connection to RDS DB instance
+             Class.forName("org.postgresql.Driver");
+             conn = DriverManager.getConnection(jdbcUrl);
+             System.out.println("Connected to the PostgreSQL server successfully.");
+          //   readStatement = conn.createStatement();
+            if(category.equals("")){
+              st = conn.prepareStatement("SELECT SUM(AMOUNT) from expenses where Email_ID=?");
+              st.setString(1,email_id);
+            }
+            else{
+              st = conn.prepareStatement("SELECT SUM(AMOUNT) from expenses where Email_ID=? and Etype=?");
+              st.setString(1,email_id);
+              st.setString(2,category);
+            }
+
+
+             resultSet = st.executeQuery();
+             while (resultSet.next())
+             {
+              //  System.out.print("Column 1 returned ");
+              res = resultSet.getString(1);
+              System.out.println(resultSet.getString(1));
+              //  System.out.println(resultSet.getString(3));
+              //  System.out.println(resultSet.getString(4));
+              //  System.out.println(resultSet.getString(5));
+              //  System.out.println(resultSet.getString(6));
+              //  System.out.println(resultSet.getString(7));
+            }
+            resultSet.close();
+          //  readStatement.close();
+     }
+       catch (SQLException ex) {
+               // Handle any errors
+               System.out.println("SQLException: " + ex.getMessage());
+               System.out.println("SQLState: " + ex.getSQLState());
+               System.out.println("VendorError: " + ex.getErrorCode());
+       }
+       catch (ClassNotFoundException e) {
+               System.out.println(e.getMessage());
+     }
+        finally {
+               System.out.println("Closing the connection.");
+               if (conn != null)
+               try {
+                 conn.close();
+               }
+               catch (SQLException ignore) {}
+       }
+       if(res == null){
+         return "you have spent 0 $";
+       }
+       return "you have spent " + res + " $";
+
+   }
    public String get_expensePeriod(String email_id, String category, LocalDate startDate, LocalDate endDate){
          System.out.println("Inside get_expensePeriod");
          System.out.println(email_id + " " + category+ " " +startDate+ " " +endDate);
@@ -185,7 +252,7 @@ public class Hello implements RequestStreamHandler
              conn = DriverManager.getConnection(jdbcUrl);
              System.out.println("Connected to the PostgreSQL server successfully.");
           //   readStatement = conn.createStatement();
-            if(category == ""){
+            if(category.equals("")){
               st = conn.prepareStatement("SELECT SUM(AMOUNT) from expenses where Email_ID=? and date between ? and ?");
               st.setString(1,email_id);
               st.setObject(2,startDate);
@@ -232,7 +299,10 @@ public class Hello implements RequestStreamHandler
                }
                catch (SQLException ignore) {}
        }
-       return res;
+       if(res == null){
+         return "you have spent 0 $";
+       }
+       return "you have spent " + res + " $";
 
    }
    public String get_expenseToday(String email_id, String category, LocalDate date){
@@ -250,7 +320,7 @@ public class Hello implements RequestStreamHandler
              conn = DriverManager.getConnection(jdbcUrl);
              System.out.println("Connected to the PostgreSQL server successfully.");
           //   readStatement = conn.createStatement();
-            if(category == ""){
+            if(category.equals("")){
               st = conn.prepareStatement("SELECT SUM(AMOUNT) from expenses where Email_ID=? and date=?");
               st.setString(1,email_id);
               st.setObject(2,date);
@@ -296,9 +366,12 @@ public class Hello implements RequestStreamHandler
                }
                catch (SQLException ignore) {}
        }
-       return res;
+       if(res == null){
+         return "you have spent 0 $";
+       }
+       return "you have spent " +res+ " $";
    }
-   public String add_expense(String email_id, String first_name, String last_name, String category, Double amt, String curr){
+   public String add_expense(String email_id, String first_name, String last_name, String category, Double amt, String curr, boolean Add){
          System.out.println("Inside Add");
          System.out.println(email_id + " " + first_name+ " " +last_name+ " " + category + " " + amt + " " + curr);
          Connection conn = null;
@@ -341,7 +414,10 @@ public class Hello implements RequestStreamHandler
                }
                catch (SQLException ignore) {}
        }
-       return "Successfully added " + amt + "to " + category;
+       if(Add){
+         return "Successfully added " + amt +" $ " +  " to " + category;
+       }
+       return "Successfully deleted " + amt * -1 + " $ " + " from " + category;
    }
 
    public Connection connect(String first, String last) {
