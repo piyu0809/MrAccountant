@@ -35,10 +35,10 @@ import java.time.format.DateTimeFormatter;
 
 public class Hello implements RequestStreamHandler
 {
-  private final String user = "piyu";
-  private final String password = "Piyu#0809";
+  private final String user = "username";
+  private final String password = "password";
   private final String dbName = "dbname";
-  private final String hostname = "mydbinstance2.cz6vhc4mxdlw.us-east-2.rds.amazonaws.com";
+  private final String hostname = "mydbinstance2.cz7vhc9mxdlw.us-east-2.rds.amazonaws.com";
   private final String port = "5432";
   Statement readStatement = null;
   ResultSet resultSet = null;
@@ -49,6 +49,8 @@ public class Hello implements RequestStreamHandler
   String action;
   Double amt;
   String curr;
+
+/** method to handle request and respose**/
    @Override
    public void handleRequest(InputStream inputStream, OutputStream outputStream, Context context) throws IOException
    {
@@ -68,79 +70,61 @@ public class Hello implements RequestStreamHandler
 
        try {
            event = (JSONObject)parser.parse(reader);
-           System.out.println(event.toString());
-           if((event.get("body")).getClass().equals(String.class)){
-             System.out.println("String");
-
-           }
-           System.out.println("Body: " + event.get("body"));
 
            String s = (String) event.get("body");
            JSONObject json = (JSONObject) parser.parse(s);
            JSONObject qr  = (JSONObject) json.get("queryResult");
            JSONObject par = (JSONObject) qr.get("parameters");
            String category = (String) par.get("category");
-           System.out.println("Category: " + category);
            String action = (String) par.get("Action");
-           System.out.println("Action: " + action);
 
            String email_id = "piyu@gmail.com";
            String first_name = "piyu";
            String last_name = "Hiremath";
            if(action.equals("add")){
-             System.out.println("Actions add");
 
-             System.out.println("unit_curr not null");
              JSONObject unit_curr = (JSONObject) par.get("unit-currency");
              Double   amt = (Double) unit_curr.get("amount");
-             System.out.println("amount: " + amt);
              String curr = (String) unit_curr.get("currency");
-            System.out.println("Currency: " + curr);
+
 
 
              response = add_expense(email_id, first_name, last_name, category, amt, curr, true);
            }
            else if(action.equals("delete")){
-             System.out.println("Action Delete");
+
              JSONObject unit_curr = (JSONObject) par.get("unit-currency");
              String curr = (String) unit_curr.get("currency");
-            System.out.println("Currency: " + curr);
              Double   amt = (Double) unit_curr.get("amount");
              System.out.println("amount: " + amt);
 
              amt = amt * -1;
              response = add_expense(email_id, first_name, last_name, category, amt, curr, false);
            }
-           else if(action.equals("spend")){
-               System.out.println("Spend action");
+           else if (action.equals("spend")){
 
-
-               if(!par.get("date").equals("") && par.get("date-period").equals("")){
+               if (!par.get("date").equals("") && par.get("date-period").equals("")){
                  String date = (String) par.get("date");
-                 System.out.println("Date:" + par.get("date"));
-                 System.out.println(par.get("date").getClass().getName());
                  String fdate = date.substring(0,10);
-                 System.out.println(fdate);
                  LocalDate ffdate = LocalDate.parse(fdate);
-                 System.out.println(ffdate);
                  response = get_expenseToday(email_id, category, ffdate);
                }
-               else if(!par.get("date-period").equals("") && par.get("date").equals("")) {
+               else if (!par.get("date-period").equals("") && par.get("date").equals("")) {
+
                  JSONObject dateperiod = (JSONObject) par.get("date-period");
 
-                 System.out.println("dateperiod");
                  String startDate = (String) dateperiod.get("startDate");
-                 System.out.println(startDate);
+
                  String endDate = (String) dateperiod.get("endDate");
-                 System.out.println(endDate);
+
                  String fstartDate = startDate.substring(0,10);
-                 System.out.println(fstartDate);
+
                  String fendDate = endDate.substring(0,10);
-                 System.out.println(fendDate);
+
                  LocalDate ffstartDate = LocalDate.parse(fstartDate);
-                 System.out.println(ffstartDate);
+
                  LocalDate ffendDate = LocalDate.parse(fendDate);
-                 System.out.println(ffendDate);
+
                  response = get_expensePeriod(email_id, category, ffstartDate, ffendDate);
                }
                else if(par.get("date").equals("") && par.get("date-period").equals("")){
@@ -159,13 +143,7 @@ public class Hello implements RequestStreamHandler
 
            JSONObject responseBody = new JSONObject();
            responseBody.put("fulfillmentText",response);
-      //     responseBody.put("message", "Output is" + 2);
-        //   JSONObject headerJson = new JSONObject();
-      //     headerJson.put("x-custom-header", "my custom header value");
-    //       headerJson.put("Access-Control-Allow-Origin", "*");
-      //     responseJson.put("isBase64Encoded", false);
            responseJson.put("statusCode", responseCode);
-        //   responseJson.put("headers", headerJson);
            responseJson.put("body", responseBody.toString());
            OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
            writer.write(responseJson.toJSONString());
@@ -173,9 +151,10 @@ public class Hello implements RequestStreamHandler
 
 
    }
+
+/** retreiving expenses from database**/
    public String get_expense(String email_id, String category){
-         System.out.println("Inside get_expense");
-         System.out.println(email_id + " " + category);
+
          String res = null;
          Connection conn = null;
          ResultSet resultSet = null;
@@ -187,7 +166,7 @@ public class Hello implements RequestStreamHandler
              Class.forName("org.postgresql.Driver");
              conn = DriverManager.getConnection(jdbcUrl);
              System.out.println("Connected to the PostgreSQL server successfully.");
-          //   readStatement = conn.createStatement();
+
             if(category.equals("")){
               st = conn.prepareStatement("SELECT SUM(AMOUNT) from expenses where Email_ID=?");
               st.setString(1,email_id);
@@ -202,17 +181,9 @@ public class Hello implements RequestStreamHandler
              resultSet = st.executeQuery();
              while (resultSet.next())
              {
-              //  System.out.print("Column 1 returned ");
               res = resultSet.getString(1);
-              System.out.println(resultSet.getString(1));
-              //  System.out.println(resultSet.getString(3));
-              //  System.out.println(resultSet.getString(4));
-              //  System.out.println(resultSet.getString(5));
-              //  System.out.println(resultSet.getString(6));
-              //  System.out.println(resultSet.getString(7));
             }
             resultSet.close();
-          //  readStatement.close();
      }
        catch (SQLException ex) {
                // Handle any errors
@@ -231,12 +202,15 @@ public class Hello implements RequestStreamHandler
                }
                catch (SQLException ignore) {}
        }
+
        if(res == null){
          return "you have spent 0 $";
        }
        return "you have spent " + res + " $";
 
    }
+
+/** retreiving todays expenses from database for a particular period**/ 
    public String get_expensePeriod(String email_id, String category, LocalDate startDate, LocalDate endDate){
          System.out.println("Inside get_expensePeriod");
          System.out.println(email_id + " " + category+ " " +startDate+ " " +endDate);
@@ -270,17 +244,9 @@ public class Hello implements RequestStreamHandler
              resultSet = st.executeQuery();
              while (resultSet.next())
              {
-              //  System.out.print("Column 1 returned ");
               res = resultSet.getString(1);
-              System.out.println(resultSet.getString(1));
-              //  System.out.println(resultSet.getString(3));
-              //  System.out.println(resultSet.getString(4));
-              //  System.out.println(resultSet.getString(5));
-              //  System.out.println(resultSet.getString(6));
-              //  System.out.println(resultSet.getString(7));
             }
             resultSet.close();
-          //  readStatement.close();
      }
        catch (SQLException ex) {
                // Handle any errors
@@ -305,9 +271,10 @@ public class Hello implements RequestStreamHandler
        return "you have spent " + res + " $";
 
    }
+
+/** retrieving todays expenses from database**/
    public String get_expenseToday(String email_id, String category, LocalDate date){
-         System.out.println("Inside get_expenseToday");
-         System.out.println(email_id + " " + category+ " " +date);
+
          Connection conn = null;
          ResultSet resultSet = null;
          PreparedStatement st = null;
@@ -315,11 +282,10 @@ public class Hello implements RequestStreamHandler
          String jdbcUrl = "jdbc:postgresql://" + hostname + ":" + port + "/" + dbName + "?user=" + user + "&password=" + password;
 
          try {
-     // Create connection to RDS DB instance
+     		// Create connection to RDS DB instance
              Class.forName("org.postgresql.Driver");
              conn = DriverManager.getConnection(jdbcUrl);
              System.out.println("Connected to the PostgreSQL server successfully.");
-          //   readStatement = conn.createStatement();
             if(category.equals("")){
               st = conn.prepareStatement("SELECT SUM(AMOUNT) from expenses where Email_ID=? and date=?");
               st.setString(1,email_id);
@@ -332,22 +298,12 @@ public class Hello implements RequestStreamHandler
               st.setObject(3,date);
             }
 
-
              resultSet = st.executeQuery();
              while (resultSet.next())
              {
-              //  System.out.print("Column 1 returned ");
-                System.out.println(resultSet.getString(1));
                 res = resultSet.getString(1);
-
-              //  System.out.println(resultSet.getString(3));
-              //  System.out.println(resultSet.getString(4));
-              //  System.out.println(resultSet.getString(5));
-              //  System.out.println(resultSet.getString(6));
-              //  System.out.println(resultSet.getString(7));
             }
             resultSet.close();
-          //  readStatement.close();
      }
        catch (SQLException ex) {
                // Handle any errors
@@ -371,6 +327,8 @@ public class Hello implements RequestStreamHandler
        }
        return "you have spent " +res+ " $";
    }
+
+/** adding expenses to the database**/
    public String add_expense(String email_id, String first_name, String last_name, String category, Double amt, String curr, boolean Add){
          System.out.println("Inside Add");
          System.out.println(email_id + " " + first_name+ " " +last_name+ " " + category + " " + amt + " " + curr);
@@ -385,9 +343,7 @@ public class Hello implements RequestStreamHandler
              st.setString(1, email_id);
              st.setString(2, first_name);
              st.setString(3, last_name);
-          //   DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd");
              LocalDate now = LocalDate.now();
-            // System.out.println(dtf.format(localDate)); //2016/11/16
              st.setObject(4, now);
              st.setString(5, category);
              st.setDouble(6, amt);
@@ -420,6 +376,7 @@ public class Hello implements RequestStreamHandler
        return "Successfully deleted " + amt * -1 + " $ " + " from " + category;
    }
 
+/** setting up SQL connection**/
    public Connection connect(String first, String last) {
          Connection conn = null;
          String jdbcUrl = "jdbc:postgresql://" + hostname + ":" + port + "/" + dbName + "?user=" + user + "&password=" + password;
